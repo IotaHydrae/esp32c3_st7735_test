@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "gpio_spi.h": "c",
+        "st7735.h": "c",
+        "cstddef": "c"
+    }
+}
