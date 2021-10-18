@@ -3,7 +3,8 @@
         {
             "name": "Win32",
             "includePath": [
-                "${default}"
+                "${default}",
+                "D:/Espressif/esp-idf-v4.3.1/tools/tools/riscv32-esp-elf/esp-2021r1-8.4.0/riscv32-esp-elf/lib/gcc/riscv32-esp-elf/8.4.0/include"
             ],
             "cStandard": "c17",
             "cppStandard": "c++17",

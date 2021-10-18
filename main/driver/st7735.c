@@ -4,20 +4,20 @@ static uint8_t st7735_init_command_table[]= {
     0x01
 };
 
-uint8_t st7735_write_read_byte(uint8_t _byte)
+uint8_t st7735_write_read_command(uint8_t _byte)
 {
     int i;
     int tmp_byte=0x00;
 
+    gpio_set_level(GPIO_DC, LOW);
     gpio_set_level(GPIO_CS, LOW);
     gpio_set_level(GPIO_SCL, LOW);
 
     for(i=0; i<8; i++) {
         gpio_set_level(GPIO_SCL, HIGH);
-        gpio_set_level(GPIO_SDA, _byte>>7&0x1);
+        gpio_set_level(GPIO_SDA, (_byte & 0x80)>>7);
         gpio_set_level(GPIO_SCL, LOW);
         _byte<<=1;
-
     }
 
 

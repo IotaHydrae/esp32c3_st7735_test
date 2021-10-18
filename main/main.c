@@ -1,34 +1,21 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/timers.h"
 #include "driver/gpio.h"
-#include "driver/st7735.h"
-#include "driver/gpio_spi.h"
+#include "driver/dht11.h"
+#include "driver/timer.h"
 
-/**
- *  Pin connects
- *    SDA <---> IO2
- *    SCL <---> IO3
- *    D/CX  <---> IO4
- *    RES <---> IO5
- *    CS  <---> IO6
- *    BLK <---> IO7
- */
-
-
-static uint8_t gpio_spi_list[] = {GPIO_SDA,
-                                  GPIO_SCL,
-                                  GPIO_DC,
-                                  GPIO_RES,
-                                  GPIO_CS,
-                                  GPIO_BLK
-                                 };
-
-void delay_ms(uint32_t count)
-{
-    vTaskDelay(count / portTICK_PERIOD_MS);
-}
+#define TIMG1_T0CONFIG_REG (*(volatile unsigned int *)0x60020000)
+#define TIMG1_T0LO_REG     (*(volatile unsigned int *)(0x60020000+0x0004))
+#define TIMG1_T0HI_REG     (*(volatile unsigned int *)(0x60020000+0x0008))
+#define TIMG1_T0UPDATE_REG (*(volatile unsigned int *)(0x60020000+0x000c))
+#define TIMG1_T0LOADLO_REG (*(volatile unsigned int *)(0x60020000+0x0018))
+#define TIMG1_T0LOADHI_REG (*(volatile unsigned int *)(0x60020000+0x001c))
+#define TIMG1_T0LOAD_REG   (*(volatile unsigned int *)(0x60020000+0x0020))
 
 void set_gpio(int pin)
 {
@@ -37,53 +24,80 @@ void set_gpio(int pin)
     gpio_set_direction(pin, GPIO_MODE_OUTPUT);
 }
 
-uint8_t gpio_spi_read_byte()
-{
-    uint8_t tmp_byte=0x00;
-    for(int i=8; i>0; i--) {
-
-    }
-    return 0;
-}
-
-void gpio_spi_send_byte(uint8_t byte)
-{
-    gpio_set_level(GPIO_CS, LOW);
-    gpio_set_level(GPIO_SCL, LOW);
-
-    while(byte>>7!=0) {
-        gpio_set_level(GPIO_SCL, HIGH);
-        gpio_set_level(GPIO_SDA, byte>>7&0x1);
-        gpio_set_level(GPIO_SCL, LOW);
-        byte<<=1;
-    }
-    gpio_set_level(GPIO_CS, HIGH);
-}
-
-void blink(int pin)
+void blink_cb(xTimerHandle xTimer)
 {
     /* Blink off (output low) */
-    printf("Turning on the LED\n");
-    gpio_set_level(pin, 1);
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    // printf("Turning on the LED\n");
+    gpio_set_level(3, 1);
+    vTaskDelay(50 / portTICK_PERIOD_MS);
     /* Blink on (output high) */
-    printf("Turning off the LED\n");
-    gpio_set_level(pin, 0);
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    // printf("Turning off the LED\n");
+    gpio_set_level(3, 0);
+}
+
+void dht11_cb(xTimerHandle xTimer)
+{
+    psDHT11_operations dht11_opr;
+    dht11_opr = (psDHT11_operations)malloc(sizeof(sDHT11_operations));
+    DHT11_register_operations(dht11_opr);
+    dht11_opr->init();
+    dht11_opr->read();
 }
 
 void app_main(void)
 {
-    for (int i = 0; i < sizeof(gpio_spi_list); i++) {
-        set_gpio(gpio_spi_list[i]);
-    }
-    /* pull up cs line. */
-    gpio_set_level(GPIO_CS, HIGH);
 
-    uint8_t ret;
+    int ret;
+    TimerHandle_t xTimer_Blink, XTimer_DHT11;
+    // sDHT11_operations my_dht11_opr;
+    // DHT11_register_operations(&my_dht11_opr);
+    xTimer_Blink = xTimerCreate(
+                       "blink",
+                       500,
+                       pdTRUE,
+                       (void *)0,
+                       blink_cb
+                   );
+
+    set_gpio(3);
+    xTimerStart(xTimer_Blink, 0);
+
+    // XTimer_DHT11 = xTimerCreate(
+    //                    "dht11",
+    //                    200,
+    //                    pdTRUE,
+    //                    (void *)0,
+    //                    dht11_cb
+    //                );
+    // xTimerStart(XTimer_DHT11, 0);
+
+    timer_config_t config = {
+        .alarm_en = TIMER_ALARM_DIS,
+        .auto_reload = TIMER_AUTORELOAD_EN,
+        .clk_src=TIMER_SRC_CLK_XTAL,
+        .counter_dir=TIMER_COUNT_UP,
+        .counter_en=TIMER_PAUSE,
+        .divider=40,
+        .intr_type=TIMER_INTR_NONE,
+    };
+
+    timer_init(TIMER_GROUP_1, TIMER_0, &config);
+    printf("TIMG1_T0CONFIG_REG: 0x%x\n", TIMG1_T0CONFIG_REG);
+    TIMG1_T0LOADLO_REG=0;
+    TIMG1_T0LOADHI_REG=0;
+    TIMG1_T0LOAD_REG=1;
+
+    TIMG1_T0CONFIG_REG |= (1<<31);
+
+    uint64_t count=0;
     while(1) {
-        ret=st7735_write_read_byte(0x04);
-        printf("%d\n", ret);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        usleep(1000*1000);
+     
+        printf("0x%x\n", TIMG1_T0CONFIG_REG);
+        TIMG1_T0UPDATE_REG=0;
+        timer_get_counter_value(1,0,&count);
+        printf("count : %ld\n", count);
     }
+
+    // timer_deinit(0,0);
 }

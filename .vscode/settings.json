@@ -2,6 +2,11 @@
     "files.associations": {
         "gpio_spi.h": "c",
         "st7735.h": "c",
-        "cstddef": "c"
+        "cstddef": "c",
+        "gpio.h": "c",
+        "freertos.h": "c",
+        "task.h": "c",
+        "timers.h": "c",
+        "timer.h": "c"
     }
 }
