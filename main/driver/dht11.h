@@ -2,6 +2,7 @@
 #define __DHT11_H
 
 #include <stdint.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,15 +18,13 @@
 
 typedef struct {
     uint8_t (*init)(void);
-    uint8_t (*read)(void);
-} sDHT11_operations,*psDHT11_operations;
+    uint8_t (*read_byte)(void);
+} sDHT11_operations, *psDHT11_operations;
 
 #define DHT11_DATA_PIN 7
 #define DHT11_delay_us(count) usleep(count)
-#define DHT11_delay_ms(count) usleep(count*1000)
+#define DHT11_delay_ms(count) usleep(count * 1000)
 
-uint8_t DHT11_register_operations(psDHT11_operations opr);
-
-
+void DHT11_register_operations(psDHT11_operations opr);
 
 #endif

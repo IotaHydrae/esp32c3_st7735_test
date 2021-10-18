@@ -7,6 +7,14 @@
         "freertos.h": "c",
         "task.h": "c",
         "timers.h": "c",
-        "timer.h": "c"
+        "timer.h": "c",
+        "algorithm": "cpp",
+        "chrono": "cpp",
+        "iterator": "cpp",
+        "xhash": "cpp",
+        "xtree": "cpp",
+        "xutility": "cpp",
+        "istream": "c",
+        "dht11.h": "c"
     }
 }
