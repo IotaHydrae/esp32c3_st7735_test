@@ -49,25 +49,30 @@ void blink_cb(xTimerHandle xTimer)
 void dht11_cb(xTimerHandle xTimer)
 {
     int ret;
-
+    dht11_handle_t dht11;
     psDHT11_operations dht11_opr;
+
     dht11_opr = (psDHT11_operations)malloc(sizeof(sDHT11_operations));
     DHT11_register_operations(dht11_opr);
 
-    ret = dht11_opr->init();
+
+    ret = dht11_opr->init(&dht11);
 
     if (ret < 0) {
         printf("dht11 init error!\n");
         return;
     }
 
-    uint8_t hum_h = dht11_opr->read_byte();
-    uint8_t hum_l = dht11_opr->read_byte();
-    uint8_t tem_h = dht11_opr->read_byte();
-    uint8_t tem_l = dht11_opr->read_byte();
-    uint8_t sum = dht11_opr->read_byte();
+    // uint8_t hum_h = dht11_opr->read_byte();
+    // uint8_t hum_l = dht11_opr->read_byte();
+    // uint8_t tem_h = dht11_opr->read_byte();
+    // uint8_t tem_l = dht11_opr->read_byte();
+    // uint8_t sum = dht11_opr->read_byte();
+    // printf("温度: %0.2f℃\t湿度: %0.2f%%\n",
+    //        tem_h + tem_l / 100.0, hum_h + hum_l / 100.0);
+    dht11_opr->decode(&dht11);
     printf("温度: %0.2f℃\t湿度: %0.2f%%\n",
-           tem_h + tem_l / 100.0, hum_h + hum_l / 100.0);
+           dht11.temperature, dht11.humidity);
 }
 
 void app_main(void)

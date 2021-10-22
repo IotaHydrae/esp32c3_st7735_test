@@ -20,17 +20,6 @@
 #define DHT11_DATA_PIN       7
 #define DHT11_BITS_PER_READ 40
 
-typedef struct {
-
-    int temperature;
-    int humidity;
-
-    int64_t timestamp;
-    dht11_state_enum state;
-    dht11_lock_enum lock;
-
-}dht11_handle_t;
-
 /**
  * @brief Do the gpio init & dht11 init function.
  * 
@@ -172,13 +161,15 @@ uint8_t DHT11_decode(dht11_handle_t *dht11)
     temp_int = dht11_decode_byte();     /* 温度整数部分 */
     temp_dec = dht11_decode_byte();     /* 温度小数部分 */
     checksum = dht11_decode_byte();     /* 校验和 */
-
+    printf("%s\n", temp_int);
     /* 数据转换 */
     dht11->humidity = hum_int + hum_dec / 100.0;
     dht11->temperature = hum_int + hum_dec / 100.0;
 
 
-    __DHT11_UNLOCK(dht11-lock);
+    __DHT11_UNLOCK(dht11->lock);
+
+    return ESP_OK;
 }
 
 void DHT11_register_operations(psDHT11_operations opr)

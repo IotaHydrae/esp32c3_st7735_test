@@ -33,21 +33,32 @@ typedef enum{
     DHT11_LOCKED    =1,
 }dht11_lock_enum;
 
+typedef struct {
+
+    int temperature;
+    int humidity;
+
+    int64_t timestamp;
+    dht11_state_enum state;
+    dht11_lock_enum lock;
+
+}dht11_handle_t;
+
 #define LOW 0
 #define HIGH 1
 
 #define OK 0
 #define ERROR -1
 
-#define SET_BIT(num,offset) ({num|=(0x1<<offset)})
-#define CLR_BIT(num,offset) ({num&=~(0x1<<offset)})
+#define SET_BIT(num,offset) (num|=(0x1<<offset))
+#define CLR_BIT(num,offset) (num&=~(0x1<<offset))
 
 #define __DHT11_LOCK(lock)     SET_BIT(lock, 0)
 #define __DHT11_UNLOCK(lock)   CLR_BIT(lock, 0)
 
 typedef struct {
-    uint8_t (*init)(void);
-    uint8_t (*decode)(void);
+    uint8_t (*init)(dht11_handle_t *);
+    uint8_t (*decode)(dht11_handle_t *);
 } sDHT11_operations,*psDHT11_operations;
 
 
