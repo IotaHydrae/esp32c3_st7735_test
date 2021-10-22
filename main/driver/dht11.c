@@ -14,6 +14,23 @@
 
 #include "dht11.h"
 
+#define DHT11_START_TRANS_TIME 18   /* ms */
+#define HOST_PULLUP_TIME       40   /* us */
+
+#define DHT11_DATA_PIN       7
+#define DHT11_BITS_PER_READ 40
+
+typedef struct {
+
+    int temperature;
+    int humidity;
+
+    int64_t timestamp;
+    dht11_state_enum state;
+    dht11_lock_enum lock;
+
+}dht11_handle_t;
+
 /**
  * @brief Do the gpio init & dht11 init function.
  * 
@@ -23,11 +40,13 @@
  *      - OK if success
  *      - Error if failed
  */
-uint8_t DHT11_init(void)
+uint8_t DHT11_init(dht11_handle_t *dht11)
 {
     int ret;
     timer_config_t *timer_config_10;
 
+    dht11->lock = DHT11_UNLOCKED;
+    dht11->state = DHT11_BUSY;
     /* 初始化定时器 */
     timer_config_10 = (timer_config_t *)malloc(sizeof(timer_config_t));
     memset(timer_config_10, 0, sizeof(timer_config_t));
@@ -45,29 +64,16 @@ uint8_t DHT11_init(void)
 
     /* 主机发送开始信号 18ms */
     gpio_set_level(DHT11_DATA_PIN, LOW);
-    DHT11_delay_ms(18);
+    DHT11_delay_ms(DHT11_START_TRANS_TIME);
 
     /* 主机拉高并延时等待 20-40us */
     gpio_set_level(DHT11_DATA_PIN, HIGH);
-    DHT11_delay_us(40);
+    DHT11_delay_us(HOST_PULLUP_TIME);
 
     gpio_set_direction(DHT11_DATA_PIN, GPIO_MODE_INPUT);
 
-    /* DHT响应信号拉低总线 80us */
-    unsigned int loopCnt = 10000;
-    while (gpio_get_level(DHT11_DATA_PIN) == LOW) {
-        if (loopCnt-- == 0) {
-            return ERROR;
-        }
-    }
-
-    /* DHT拉高总线延时准备输出 80us */
-    loopCnt = 10000;
-    while (gpio_get_level(DHT11_DATA_PIN) == HIGH) {
-        if (loopCnt-- == 0) {
-            return ERROR;
-        }
-    }
+    /* dht11初始化完成 */
+    dht11->state = DHT11_READY;
 
     return OK;
 }
@@ -82,7 +88,7 @@ uint8_t DHT11_init(void)
  *      - The byte read from DHT11_DATA_PIN if success
  *      - Error if failed
  */
-uint8_t DHT11_read_byte(void)
+static uint8_t dht11_decode_byte(void)
 {
     uint32_t loopCnt;
     uint8_t tmp_bytes = 0x00;
@@ -135,8 +141,48 @@ uint8_t DHT11_read_byte(void)
     return tmp_bytes;
 }
 
+uint8_t DHT11_decode(dht11_handle_t *dht11)
+{
+    uint8_t hum_int, hum_dec, temp_int, temp_dec, checksum;
+
+    if(dht11->state != DHT11_READY){
+        return ESP_FAIL;
+    }
+
+    __DHT11_LOCK(dht11->lock);
+    /* DHT响应信号拉低总线 80us */
+    unsigned int loopCnt = 10000;
+    while (gpio_get_level(DHT11_DATA_PIN) == LOW) {
+        if (loopCnt-- == 0) {
+            return ERROR;
+        }
+    }
+
+    /* DHT拉高总线延时准备输出 80us */
+    loopCnt = 10000;
+    while (gpio_get_level(DHT11_DATA_PIN) == HIGH) {
+        if (loopCnt-- == 0) {
+            return ERROR;
+        }
+    }
+
+    /* 读取数据，共40bit */
+    hum_int  = dht11_decode_byte();     /* 湿度整数部分 */
+    hum_dec  = dht11_decode_byte();     /* 湿度小数部分 */
+    temp_int = dht11_decode_byte();     /* 温度整数部分 */
+    temp_dec = dht11_decode_byte();     /* 温度小数部分 */
+    checksum = dht11_decode_byte();     /* 校验和 */
+
+    /* 数据转换 */
+    dht11->humidity = hum_int + hum_dec / 100.0;
+    dht11->temperature = hum_int + hum_dec / 100.0;
+
+
+    __DHT11_UNLOCK(dht11-lock);
+}
+
 void DHT11_register_operations(psDHT11_operations opr)
 {
     opr->init = DHT11_init;
-    opr->read_byte = DHT11_read_byte;
+    opr->decode = DHT11_decode;
 }
