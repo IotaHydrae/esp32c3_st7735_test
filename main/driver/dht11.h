@@ -23,26 +23,37 @@
 #include "driver/gpio.h"
 #include "driver/timer.h"
 
-typedef enum{
-    DHT11_READY =0,
-    DHT11_BUSY  =1,
-}dht11_state_enum;
+typedef enum {
 
-typedef enum{
-    DHT11_UNLOCKED  =0,
-    DHT11_LOCKED    =1,
-}dht11_lock_enum;
+    DHT11_READY = 0,
+    DHT11_BUSY  = 1,
+
+} dht11_state_enum;
+
+typedef enum {
+
+    DHT11_UNLOCKED  = 0,
+    DHT11_LOCKED    = 1,
+
+} dht11_lock_enum;
 
 typedef struct {
 
-    int temperature;
-    int humidity;
+    float temperature;
+    float humidity;
+    uint8_t checksum;
 
-    int64_t timestamp;
     dht11_state_enum state;
     dht11_lock_enum lock;
 
-}dht11_handle_t;
+} dht11_handle_t;
+
+typedef struct {
+
+    uint8_t (*init)(dht11_handle_t *);
+    uint8_t (*decode)(dht11_handle_t *);
+
+} sDHT11_operations,*psDHT11_operations;
 
 #define LOW 0
 #define HIGH 1
@@ -56,17 +67,15 @@ typedef struct {
 #define __DHT11_LOCK(lock)     SET_BIT(lock, 0)
 #define __DHT11_UNLOCK(lock)   CLR_BIT(lock, 0)
 
-typedef struct {
-    uint8_t (*init)(dht11_handle_t *);
-    uint8_t (*decode)(dht11_handle_t *);
-} sDHT11_operations,*psDHT11_operations;
-
-
 #define DHT11_delay_us(count) usleep(count)
 #define DHT11_delay_ms(count) usleep(count*1000)
 
+#define MAX_ATTEMPTS 10000
+#define wait_condition_by_attempts(condition, attempts) ({ \
+    unsigned int tmp = attempts;                        \
+    while ((condition)) if (tmp-- == 0) return ERROR;   \
+})
+
 void DHT11_register_operations(psDHT11_operations opr);
-
-
 
 #endif
